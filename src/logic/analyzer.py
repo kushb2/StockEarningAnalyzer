@@ -57,6 +57,13 @@ class Analyzer:
                 }
             }
         """
+        print("--- Analyzer Input ---")
+        print("DataFrame columns:", df.columns.tolist())
+        print("DataFrame head:\n", df.head())
+        print("DataFrame info:")
+        df.info()
+        print("----------------------")
+        
         # Calculate indicators
         df = self._calculate_indicators(df, windows)
         
@@ -88,58 +95,70 @@ class Analyzer:
         RVOL baselines end at T-11 to avoid contamination from pre-earnings volatility.
         Indicators (RSI, SMAs) are already calculated and cached by DataFetcher.
         """
-        df = df.copy()
-        
-        # Get T-11 date for baseline cutoff
-        earnings_date = windows['earnings_date']
-        t_minus_11_idx = None
-        
-        for idx, row in df.iterrows():
-            if row['date'].date() >= earnings_date.date():
-                # Found earnings date, go back 11 trading days
-                if idx >= abs(RVOL_BASELINE_OFFSET):
-                    t_minus_11_idx = idx + RVOL_BASELINE_OFFSET  # RVOL_BASELINE_OFFSET is -11
-                break
-        
-        # Use pre-calculated volume SMAs from DataFetcher
-        if 'Volume_SMA_20' not in df.columns or 'Volume_SMA_50' not in df.columns:
-            # Fallback: calculate if not present (shouldn't happen)
-            df['Volume_SMA_20'] = df['volume'].rolling(window=20, min_periods=20).mean()
-            df['Volume_SMA_50'] = df['volume'].rolling(window=50, min_periods=50).mean()
-        
-        # Calculate RVOL using frozen baseline at T-11
-        if t_minus_11_idx is not None:
-            # Freeze baseline at T-11
-            baseline_20 = df.loc[t_minus_11_idx, 'Volume_SMA_20']
-            baseline_50 = df.loc[t_minus_11_idx, 'Volume_SMA_50']
+        try:
+            df = df.copy()
             
-            # Calculate RVOL using frozen baseline for dates after T-11
-            df['rvol_20'] = df['volume'] / df['Volume_SMA_20']
-            df['rvol_50'] = df['volume'] / df['Volume_SMA_50']
+            # Get T-11 date for baseline cutoff
+            earnings_date = windows['earnings_date']
+            t_minus_11_idx = None
             
-            # For accumulation window (T-10 to T-2), use the T-11 baseline
-            for idx in range(t_minus_11_idx + 1, len(df)):
-                if pd.notna(baseline_20) and baseline_20 > 0:
-                    df.loc[idx, 'rvol_20'] = df.loc[idx, 'volume'] / baseline_20
-                if pd.notna(baseline_50) and baseline_50 > 0:
-                    df.loc[idx, 'rvol_50'] = df.loc[idx, 'volume'] / baseline_50
-        else:
-            # Fallback: use rolling SMA
-            df['rvol_20'] = df['volume'] / df['Volume_SMA_20']
-            df['rvol_50'] = df['volume'] / df['Volume_SMA_50']
-        
-        # Use pre-calculated RSI from DataFetcher
-        if 'RSI_14' in df.columns:
-            df['rsi'] = df['RSI_14']
-        else:
-            # Fallback: calculate if not present (shouldn't happen)
-            df['rsi'] = ta.rsi(df['close'], length=RSI_PERIOD)
-        
-        # Use pre-calculated RSI Percentile
-        if 'RSI_Percentile' in df.columns:
-            df['rsi_percentile'] = df['RSI_Percentile']
-        
-        return df
+            for idx, row in df.iterrows():
+                if row['date'].date() >= earnings_date.date():
+                    # Found earnings date, go back 11 trading days
+                    if idx >= abs(RVOL_BASELINE_OFFSET):
+                        t_minus_11_idx = idx + RVOL_BASELINE_OFFSET  # RVOL_BASELINE_OFFSET is -11
+                    break
+            
+            # Use pre-calculated volume SMAs from DataFetcher
+            if 'Volume_SMA_20' not in df.columns or 'Volume_SMA_50' not in df.columns:
+                # Fallback: calculate if not present (shouldn't happen)
+                df['Volume_SMA_20'] = df['volume'].rolling(window=20, min_periods=20).mean()
+                df['Volume_SMA_50'] = df['volume'].rolling(window=50, min_periods=50).mean()
+            
+            # Calculate RVOL using frozen baseline at T-11
+            if t_minus_11_idx is not None:
+                # Freeze baseline at T-11
+                baseline_20 = df.loc[t_minus_11_idx, 'Volume_SMA_20']
+                baseline_50 = df.loc[t_minus_11_idx, 'Volume_SMA_50']
+                
+                # Calculate RVOL using frozen baseline for dates after T-11
+                df['rvol_20'] = df['volume'] / df['Volume_SMA_20']
+                df['rvol_50'] = df['volume'] / df['Volume_SMA_50']
+                
+                # For accumulation window (T-10 to T-2), use the T-11 baseline
+                for idx in range(t_minus_11_idx + 1, len(df)):
+                    if pd.notna(baseline_20) and baseline_20 > 0:
+                        df.loc[idx, 'rvol_20'] = df.loc[idx, 'volume'] / baseline_20
+                    if pd.notna(baseline_50) and baseline_50 > 0:
+                        df.loc[idx, 'rvol_50'] = df.loc[idx, 'volume'] / baseline_50
+            else:
+                # Fallback: use rolling SMA
+                df['rvol_20'] = df['volume'] / df['Volume_SMA_20']
+                df['rvol_50'] = df['volume'] / df['Volume_SMA_50']
+            
+            # Use pre-calculated RSI from DataFetcher
+            if 'RSI_14' in df.columns:
+                df['rsi'] = df['RSI_14']
+            else:
+                # Fallback: calculate if not present (shouldn't happen)
+                df['rsi'] = ta.rsi(df['close'], length=RSI_PERIOD)
+            
+            # Use pre-calculated RSI Percentile
+            if 'RSI_Percentile' in df.columns:
+                df['rsi_percentile'] = df['RSI_Percentile']
+            
+            return df
+        except KeyError as e:
+            print(f"--- KeyError in _calculate_indicators ---")
+            print(f"Missing column: {e}")
+            print("Available columns:", df.columns.tolist())
+            print("-----------------------------------------")
+            raise
+        except Exception as e:
+            print(f"--- An unexpected error occurred in _calculate_indicators ---")
+            print(f"Error: {e}")
+            print("-----------------------------------------------------------")
+            raise
     
     def _find_accumulation_zone(
         self,
