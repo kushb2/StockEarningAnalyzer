@@ -11,15 +11,16 @@ from pathlib import Path
 from typing import Optional
 import pandas as pd
 
+from src.config.constants import (
+    OBSERVATION_START_OFFSET,
+    OBSERVATION_END_OFFSET,
+    ACCUMULATION_START_OFFSET,
+    ACCUMULATION_END_OFFSET
+)
+
 
 class EarningsData:
     """Manages earnings dates and analysis window calculations."""
-    
-    # Analysis window definitions (trading days relative to earnings date T)
-    OBSERVATION_START = -20  # T-20
-    OBSERVATION_END = 40     # T+40
-    ACCUMULATION_START = -10 # T-10
-    ACCUMULATION_END = -2    # T-2
     
     def __init__(self, config_path: str = "configs/stockSymbolDetails.json"):
         """
@@ -118,9 +119,12 @@ class EarningsData:
             trading_days: List of valid trading days from OHLCV data
             
         Returns:
-            The date at the specified offset, or None if out of range
+            The date at the specified offset, or nearest available date if out of range
         """
         trading_days_sorted = sorted(trading_days)
+        
+        if not trading_days_sorted:
+            return None
         
         # Find the index of earnings date or nearest trading day
         earnings_idx = self._find_nearest_trading_day_index(
@@ -132,9 +136,15 @@ class EarningsData:
         
         target_idx = earnings_idx + offset
         
-        if 0 <= target_idx < len(trading_days_sorted):
+        # Clamp to available range instead of returning None
+        if target_idx < 0:
+            # Requested date is before available data, return earliest date
+            return trading_days_sorted[0]
+        elif target_idx >= len(trading_days_sorted):
+            # Requested date is after available data, return latest date
+            return trading_days_sorted[-1]
+        else:
             return trading_days_sorted[target_idx]
-        return None
     
     def _find_nearest_trading_day_index(
         self, 
@@ -144,12 +154,28 @@ class EarningsData:
         """
         Find index of target date or nearest trading day.
         
-        If target_date is not a trading day, returns the next trading day.
+        If target_date is not a trading day, returns the next available trading day.
+        If target_date is before all trading days, returns 0.
+        If target_date is after all trading days, returns last index.
         """
+        if not trading_days:
+            return None
+        
+        # If target is before all trading days, return first
+        if target_date.date() < trading_days[0].date():
+            return 0
+        
+        # If target is after all trading days, return last
+        if target_date.date() > trading_days[-1].date():
+            return len(trading_days) - 1
+        
+        # Find exact match or next trading day
         for i, td in enumerate(trading_days):
             if td.date() >= target_date.date():
                 return i
-        return None
+        
+        # Fallback to last index
+        return len(trading_days) - 1
     
     def get_analysis_windows(
         self, 
@@ -179,12 +205,12 @@ class EarningsData:
         windows = {
             "earnings_date": earnings_date,
             "observation": {
-                "start": self.get_trading_day_offset(earnings_date, self.OBSERVATION_START, trading_days),
-                "end": self.get_trading_day_offset(earnings_date, self.OBSERVATION_END, trading_days)
+                "start": self.get_trading_day_offset(earnings_date, OBSERVATION_START_OFFSET, trading_days),
+                "end": self.get_trading_day_offset(earnings_date, OBSERVATION_END_OFFSET, trading_days)
             },
             "accumulation": {
-                "start": self.get_trading_day_offset(earnings_date, self.ACCUMULATION_START, trading_days),
-                "end": self.get_trading_day_offset(earnings_date, self.ACCUMULATION_END, trading_days)
+                "start": self.get_trading_day_offset(earnings_date, ACCUMULATION_START_OFFSET, trading_days),
+                "end": self.get_trading_day_offset(earnings_date, ACCUMULATION_END_OFFSET, trading_days)
             },
             "t_minus_1": self.get_trading_day_offset(earnings_date, -1, trading_days),
             "t_plus_2": self.get_trading_day_offset(earnings_date, 2, trading_days),

@@ -14,15 +14,15 @@ from typing import Optional
 import pandas as pd
 import pandas_ta as ta
 
+from src.config.constants import (
+    RVOL_HIGH_PROBABILITY_THRESHOLD,
+    RSI_PERIOD,
+    RVOL_BASELINE_OFFSET
+)
+
 
 class Analyzer:
     """Analyzes earnings event data for accumulation zones and returns."""
-    
-    # RVOL thresholds
-    RVOL_HIGH_PROBABILITY_THRESHOLD = 1.5
-    
-    # RSI period
-    RSI_PERIOD = 14
     
     def __init__(self):
         """Initialize Analyzer."""
@@ -83,9 +83,10 @@ class Analyzer:
     
     def _calculate_indicators(self, df: pd.DataFrame, windows: dict) -> pd.DataFrame:
         """
-        Calculate technical indicators: RVOL_20, RVOL_50, RSI.
+        Use pre-calculated indicators from DataFetcher and calculate RVOL.
         
         RVOL baselines end at T-11 to avoid contamination from pre-earnings volatility.
+        Indicators (RSI, SMAs) are already calculated and cached by DataFetcher.
         """
         df = df.copy()
         
@@ -96,23 +97,25 @@ class Analyzer:
         for idx, row in df.iterrows():
             if row['date'].date() >= earnings_date.date():
                 # Found earnings date, go back 11 trading days
-                if idx >= 11:
-                    t_minus_11_idx = idx - 11
+                if idx >= abs(RVOL_BASELINE_OFFSET):
+                    t_minus_11_idx = idx + RVOL_BASELINE_OFFSET  # RVOL_BASELINE_OFFSET is -11
                 break
         
-        # Calculate volume SMAs
-        df['volume_sma_20'] = df['volume'].rolling(window=20, min_periods=20).mean()
-        df['volume_sma_50'] = df['volume'].rolling(window=50, min_periods=50).mean()
+        # Use pre-calculated volume SMAs from DataFetcher
+        if 'Volume_SMA_20' not in df.columns or 'Volume_SMA_50' not in df.columns:
+            # Fallback: calculate if not present (shouldn't happen)
+            df['Volume_SMA_20'] = df['volume'].rolling(window=20, min_periods=20).mean()
+            df['Volume_SMA_50'] = df['volume'].rolling(window=50, min_periods=50).mean()
         
-        # For RVOL baseline, use SMA values up to T-11
+        # Calculate RVOL using frozen baseline at T-11
         if t_minus_11_idx is not None:
             # Freeze baseline at T-11
-            baseline_20 = df.loc[t_minus_11_idx, 'volume_sma_20']
-            baseline_50 = df.loc[t_minus_11_idx, 'volume_sma_50']
+            baseline_20 = df.loc[t_minus_11_idx, 'Volume_SMA_20']
+            baseline_50 = df.loc[t_minus_11_idx, 'Volume_SMA_50']
             
             # Calculate RVOL using frozen baseline for dates after T-11
-            df['rvol_20'] = df['volume'] / df['volume_sma_20']
-            df['rvol_50'] = df['volume'] / df['volume_sma_50']
+            df['rvol_20'] = df['volume'] / df['Volume_SMA_20']
+            df['rvol_50'] = df['volume'] / df['Volume_SMA_50']
             
             # For accumulation window (T-10 to T-2), use the T-11 baseline
             for idx in range(t_minus_11_idx + 1, len(df)):
@@ -122,11 +125,19 @@ class Analyzer:
                     df.loc[idx, 'rvol_50'] = df.loc[idx, 'volume'] / baseline_50
         else:
             # Fallback: use rolling SMA
-            df['rvol_20'] = df['volume'] / df['volume_sma_20']
-            df['rvol_50'] = df['volume'] / df['volume_sma_50']
+            df['rvol_20'] = df['volume'] / df['Volume_SMA_20']
+            df['rvol_50'] = df['volume'] / df['Volume_SMA_50']
         
-        # Calculate RSI
-        df['rsi'] = ta.rsi(df['close'], length=self.RSI_PERIOD)
+        # Use pre-calculated RSI from DataFetcher
+        if 'RSI_14' in df.columns:
+            df['rsi'] = df['RSI_14']
+        else:
+            # Fallback: calculate if not present (shouldn't happen)
+            df['rsi'] = ta.rsi(df['close'], length=RSI_PERIOD)
+        
+        # Use pre-calculated RSI Percentile
+        if 'RSI_Percentile' in df.columns:
+            df['rsi_percentile'] = df['RSI_Percentile']
         
         return df
     
@@ -179,6 +190,7 @@ class Analyzer:
                 "rvol_20": row.get('rvol_20'),
                 "rvol_50": row.get('rvol_50'),
                 "rsi": row.get('rsi'),
+                "rsi_percentile": row.get('rsi_percentile'),
                 "days_before_earnings": days_before
             })
         

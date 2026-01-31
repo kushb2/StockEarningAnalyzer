@@ -134,8 +134,7 @@ def perform_analysis(symbol, earnings_date, data_fetcher, earnings_data, analyze
         # Get trading days from cache (or fetch minimal data first)
         print("earnings_date", earnings_date, "symbol", symbol)
         trading_days = data_fetcher.get_trading_days(symbol)
-        print(trading_days)
-        
+
         if not trading_days:
             # No cache, fetch 1 year of data first
             df_initial = data_fetcher.fetch_ohlcv(symbol)
@@ -145,10 +144,12 @@ def perform_analysis(symbol, earnings_date, data_fetcher, earnings_data, analyze
         
         # Calculate analysis windows
         windows = earnings_data.get_analysis_windows(earnings_date, trading_days)
+        print("windows", windows)
         
         # Fetch data with buffer
         obs_start = windows['observation']['start']
         obs_end = windows['observation']['end']
+        print("obs_start", obs_start, "obs_end", obs_end)
         
         if obs_start is None or obs_end is None:
             st.error("Unable to calculate observation window. Insufficient trading days data.")
@@ -354,6 +355,7 @@ def display_metrics_panel(symbol, quarter, earnings_date, result):
                     "RVOL_20": f"{acc_day['rvol_20']:.2f}" if acc_day['rvol_20'] is not None else "N/A",
                     "RVOL_50": f"{acc_day['rvol_50']:.2f}" if acc_day['rvol_50'] is not None else "N/A",
                     "RSI": f"{acc_day['rsi']:.1f}" if acc_day['rsi'] is not None else "N/A",
+                    "RSI %ile": f"{acc_day['rsi_percentile']:.1f}" if acc_day.get('rsi_percentile') is not None else "N/A",
                     "Days Before": acc_day['days_before_earnings']
                 })
             
@@ -434,6 +436,13 @@ def display_metrics_panel(symbol, quarter, earnings_date, result):
     st.markdown("### 💡 Interpretation")
     st.caption("**RVOL_20**: Tactical/Swing signal (monthly liquidity)")
     st.caption("**RVOL_50**: Strategic/Positional signal (quarterly liquidity)")
+    st.caption("**RSI**: 14-period momentum (0-100, <30 oversold, >70 overbought)")
+    st.caption("**RSI %ile**: Relative RSI vs 252-day history (0-100)")
+    st.caption("  • 0-20: Extremely oversold historically")
+    st.caption("  • 20-40: Below average")
+    st.caption("  • 40-60: Average range")
+    st.caption("  • 60-80: Above average")
+    st.caption("  • 80-100: Extremely overbought historically")
     st.caption("**High RVOL + Low Price**: Potential accumulation (institutions buying)")
     st.caption("**Low RVOL + Low Price**: Drift/trap (no support, avoid)")
 

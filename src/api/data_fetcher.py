@@ -10,20 +10,34 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
 import pandas as pd
+import pandas_ta as ta
 
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from kite_auth import KiteAuthenticator, load_api_config
+from src.config.constants import (
+    INDICATOR_BUFFER_DAYS,
+    DEFAULT_HISTORY_DAYS,
+    REQUIRED_INDICATORS,
+    RSI_PERIOD,
+    RSI_PERCENTILE_WINDOW,
+    SMA_SHORT_PERIOD,
+    SMA_MEDIUM_PERIOD,
+    SMA_LONG_PERIOD,
+    SMA_MAJOR_PERIOD,
+    VOLUME_SMA_SHORT_PERIOD,
+    VOLUME_SMA_MEDIUM_PERIOD,
+    ATR_PERIOD,
+    ATR_PERCENTILE_WINDOW,
+    BB_PERIOD,
+    BB_STD_DEV,
+    VOLUME_PERCENTILE_WINDOW
+)
 
 
 class DataFetcher:
     """Fetches and caches OHLCV data from Kite Connect API."""
-    
-    # Buffer days before observation window for indicator initialization (50-day SMA, RSI)
-    INDICATOR_BUFFER_DAYS = 100
-    # Default history to fetch (covers multiple quarters)
-    DEFAULT_HISTORY_DAYS = 365
     
     def __init__(
         self,
@@ -167,13 +181,13 @@ class DataFetcher:
             force_refresh: If True, fetch from API even if cache exists
             
         Returns:
-            DataFrame with columns: date, open, high, low, close, volume
+            DataFrame with columns: date, open, high, low, close, volume, RSI_14
         """
         # Set default date range
         if to_date is None:
             to_date = datetime.now()
         if from_date is None:
-            from_date = to_date - timedelta(days=self.DEFAULT_HISTORY_DAYS)
+            from_date = to_date - timedelta(days=DEFAULT_HISTORY_DAYS)
         
         # Load existing cache
         cached_df = self._load_cached_data(symbol)
@@ -183,26 +197,136 @@ class DataFetcher:
             cache_start = cached_df['date'].min()
             cache_end = cached_df['date'].max()
             
-            # If cache covers the range, return cached data
+            # Check if cache covers date range and has all indicators
+            has_all_indicators = all(col in cached_df.columns for col in REQUIRED_INDICATORS)
+            
             if cache_start.date() <= from_date.date() and cache_end.date() >= to_date.date():
+                if not has_all_indicators:
+                    # Recalculate indicators if missing
+                    cached_df = self._calculate_indicators(cached_df)
+                    self._save_cached_data(symbol, cached_df)
                 return self._filter_date_range(cached_df, from_date, to_date)
         
         # Fetch from API
         new_df = self._fetch_from_api(symbol, from_date, to_date)
         
-        if new_df is None:
-            # Return cached data if API fails
-            if cached_df is not None:
-                return self._filter_date_range(cached_df, from_date, to_date)
-            return None
-        
+        if new_df is None and cached_df is None:
+            return None # No data available
+
         # Merge with existing cache
         merged_df = self._merge_data(cached_df, new_df)
         
+        # Calculate indicators on the full dataset
+        merged_df = self._calculate_indicators(merged_df)
+
         # Save updated cache
         self._save_cached_data(symbol, merged_df)
         
         return self._filter_date_range(merged_df, from_date, to_date)
+
+    def _calculate_indicators(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Calculate technical indicators and add them to the DataFrame.
+        
+        Calculates and caches:
+        - RSI_14: 14-period Relative Strength Index
+        - RSI_Percentile: Percentile rank of RSI vs 252-day history
+        - ATR_14: 14-period Average True Range (volatility)
+        - ATR_Percentile: Percentile rank of ATR vs 252-day history
+        - BB_Lower, BB_Upper, BB_Width: Bollinger Bands (20-period, 2 std dev)
+        - Volume_Percentile: Percentile rank of volume vs 252-day history
+        - SMA_20, 50, 100, 200: Price moving averages
+        - Volume_SMA_20, 50: Volume moving averages
+        - Distance_SMA_50, 100, 200: Price distance from SMAs (%)
+        """
+        if df is None or df.empty:
+            return df
+        
+        df = df.copy()
+        
+        # Ensure numeric types
+        df['close'] = df['close'].astype(float)
+        df['high'] = df['high'].astype(float)
+        df['low'] = df['low'].astype(float)
+        df['volume'] = df['volume'].astype(float)
+        
+        # ===== RSI Indicators =====
+        df['RSI_14'] = ta.rsi(df['close'], length=RSI_PERIOD)
+        df['RSI_Percentile'] = self._calculate_percentile(df['RSI_14'], RSI_PERCENTILE_WINDOW)
+        
+        # ===== ATR Indicators (Volatility) =====
+        df['ATR_14'] = ta.atr(df['high'], df['low'], df['close'], length=ATR_PERIOD)
+        df['ATR_Percentile'] = self._calculate_percentile(df['ATR_14'], ATR_PERCENTILE_WINDOW)
+        
+        # ===== Bollinger Bands =====
+        bb = ta.bbands(df['close'], length=BB_PERIOD, std=BB_STD_DEV)
+        df['BB_Lower'] = bb[f'BBL_{BB_PERIOD}_{BB_STD_DEV}']
+        df['BB_Upper'] = bb[f'BBU_{BB_PERIOD}_{BB_STD_DEV}']
+        bb_middle = bb[f'BBM_{BB_PERIOD}_{BB_STD_DEV}']
+        df['BB_Width'] = ((df['BB_Upper'] - df['BB_Lower']) / bb_middle * 100)
+        
+        # ===== Volume Indicators =====
+        df['Volume_Percentile'] = self._calculate_percentile(df['volume'], VOLUME_PERCENTILE_WINDOW)
+        df['Volume_SMA_20'] = ta.sma(df['volume'], length=VOLUME_SMA_SHORT_PERIOD)
+        df['Volume_SMA_50'] = ta.sma(df['volume'], length=VOLUME_SMA_MEDIUM_PERIOD)
+        
+        # ===== Price Moving Averages =====
+        df['SMA_20'] = ta.sma(df['close'], length=SMA_SHORT_PERIOD)
+        df['SMA_50'] = ta.sma(df['close'], length=SMA_MEDIUM_PERIOD)
+        df['SMA_100'] = ta.sma(df['close'], length=SMA_LONG_PERIOD)
+        df['SMA_200'] = ta.sma(df['close'], length=SMA_MAJOR_PERIOD)
+        
+        # ===== Price Distance from SMAs (%) =====
+        df['Distance_SMA_50'] = ((df['close'] - df['SMA_50']) / df['SMA_50'] * 100)
+        df['Distance_SMA_100'] = ((df['close'] - df['SMA_100']) / df['SMA_100'] * 100)
+        df['Distance_SMA_200'] = ((df['close'] - df['SMA_200']) / df['SMA_200'] * 100)
+        
+        return df
+    
+    def _calculate_percentile(self, series: pd.Series, window: int) -> pd.Series:
+        """
+        Calculate percentile rank using rolling window.
+        
+        Formula: (Current_Value - Min_Value) / (Max_Value - Min_Value) * 100
+        
+        Args:
+            series: Series of values
+            window: Rolling window size (e.g., 252 trading days)
+            
+        Returns:
+            Series of percentile values (0-100)
+        """
+        percentile = pd.Series(index=series.index, dtype=float)
+        
+        for i in range(len(series)):
+            if pd.isna(series.iloc[i]):
+                percentile.iloc[i] = None
+                continue
+            
+            # Get window ending at current position
+            start_idx = max(0, i - window + 1)
+            window_data = series.iloc[start_idx:i+1]
+            
+            # Remove NaN values
+            window_data = window_data.dropna()
+            
+            if len(window_data) < 2:
+                percentile.iloc[i] = None
+                continue
+            
+            current_value = series.iloc[i]
+            min_value = window_data.min()
+            max_value = window_data.max()
+            
+            # Calculate percentile
+            if max_value - min_value > 0:
+                pct = ((current_value - min_value) / (max_value - min_value)) * 100
+                percentile.iloc[i] = pct
+            else:
+                # All values are the same in the window
+                percentile.iloc[i] = 50.0
+        
+        return percentile
     
     def _fetch_from_api(
         self,
@@ -274,11 +398,10 @@ class DataFetcher:
         Returns:
             DataFrame with buffered data
         """
-        buffer_start = analysis_start - timedelta(days=self.INDICATOR_BUFFER_DAYS + 50)
+        buffer_start = analysis_start - timedelta(days=INDICATOR_BUFFER_DAYS + 50)
         return self.fetch_ohlcv(symbol, buffer_start, analysis_end)
     
     def get_trading_days(self, symbol: str) -> list[datetime]:
-        print("get_trading_days : Symbol", symbol)
         """
         Get list of trading days from cached OHLCV data.
         
@@ -292,3 +415,30 @@ class DataFetcher:
         if df is None or df.empty:
             return []
         return df['date'].tolist()
+    
+    def get_available_indicators(self) -> dict:
+        """
+        Get list of available pre-calculated indicators.
+        
+        Returns:
+            Dict with indicator names and descriptions
+        """
+        return {
+            'RSI_14': '14-period Relative Strength Index (0-100)',
+            'RSI_Percentile': 'RSI percentile vs 252-day history (0-100)',
+            'ATR_14': '14-period Average True Range (volatility)',
+            'ATR_Percentile': 'ATR percentile vs 252-day history (0-100)',
+            'BB_Lower': 'Bollinger Band Lower (20-period, 2 std dev)',
+            'BB_Upper': 'Bollinger Band Upper (20-period, 2 std dev)',
+            'BB_Width': 'Bollinger Band Width (%)',
+            'Volume_Percentile': 'Volume percentile vs 252-day history (0-100)',
+            'SMA_20': '20-day Simple Moving Average (price)',
+            'SMA_50': '50-day Simple Moving Average (price)',
+            'SMA_100': '100-day Simple Moving Average (price)',
+            'SMA_200': '200-day Simple Moving Average (price)',
+            'Volume_SMA_20': '20-day Simple Moving Average (volume)',
+            'Volume_SMA_50': '50-day Simple Moving Average (volume)',
+            'Distance_SMA_50': 'Price distance from 50-day SMA (%)',
+            'Distance_SMA_100': 'Price distance from 100-day SMA (%)',
+            'Distance_SMA_200': 'Price distance from 200-day SMA (%)'
+        }

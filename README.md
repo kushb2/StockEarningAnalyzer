@@ -62,6 +62,28 @@ This single JSON file contains all stock information:
 - `instrument_token`: Kite Connect instrument token (null if not found)
 - `earnings_dates`: Array of earnings announcement dates (ISO format)
 
+### Constants Configuration (src/config/constants.py)
+
+All analysis parameters are centralized in `src/config/constants.py` for easy tuning:
+
+**Analysis Windows:**
+- `OBSERVATION_START_OFFSET = -20` (T-20)
+- `OBSERVATION_END_OFFSET = 40` (T+40)
+- `ACCUMULATION_START_OFFSET = -10` (T-10)
+- `ACCUMULATION_END_OFFSET = -2` (T-2)
+
+**Indicator Periods:**
+- `RSI_PERIOD = 14`
+- `ATR_PERIOD = 14`
+- `BB_PERIOD = 20`, `BB_STD_DEV = 2.0`
+- `SMA_SHORT_PERIOD = 20`, `SMA_MEDIUM_PERIOD = 50`, etc.
+
+**Thresholds:**
+- `RVOL_HIGH_PROBABILITY_THRESHOLD = 1.5`
+- `RSI_OVERSOLD = 30`, `RSI_OVERBOUGHT = 70`
+
+**Modify these values to tune the analysis behavior without changing code!**
+
 ## Setup
 
 ### 1. Install Dependencies
@@ -187,10 +209,55 @@ All windows use **trading days** (NSE calendar):
 - **Baseline**: Calculated up to T-11 to avoid pre-earnings contamination
 - **High Probability**: RVOL_50 > 1.5 + price at accumulation low
 
-### Interpretation
+### RSI (Relative Strength Index)
 
-- **High RVOL + Low Price**: Accumulation (institutions buying retail panic)
-- **Low RVOL + Low Price**: Drift/trap (no support, avoid)
+- **RSI_14**: Standard 14-period RSI (0-100)
+  - < 30: Oversold
+  - > 70: Overbought
+  
+- **RSI_Percentile**: Relative RSI vs 252-day history (0-100)
+  - Shows how extreme current RSI is compared to past year
+  - 0-20: Extremely oversold historically (rare opportunity)
+  - 20-40: Below average
+  - 40-60: Average range
+  - 60-80: Above average
+  - 80-100: Extremely overbought historically (caution)
+
+**Example**: RSI = 35 (oversold) + RSI_Percentile = 15 (extremely low historically) = Strong accumulation signal
+
+### ATR (Average True Range) - Volatility
+
+- **ATR_14**: 14-period ATR (absolute volatility)
+- **ATR_Percentile**: ATR vs 252-day history (0-100)
+  - 0-20: Extremely low volatility (coiling spring)
+  - 80-100: Extremely high volatility (explosive move)
+
+**Use Case**: Low ATR + Low Price = Quiet accumulation before breakout
+
+### Bollinger Bands - Price Extremes
+
+- **BB_Lower/Upper**: 20-period bands (2 standard deviations)
+- **BB_Width**: Band width as % of middle band
+  - Narrow bands = Low volatility (consolidation)
+  - Wide bands = High volatility (trending)
+
+**Use Case**: Price at/below lower band = Objective oversold level
+
+### Volume Percentile
+
+- **Volume_Percentile**: Current volume vs 252-day history (0-100)
+  - Complements RVOL analysis
+  - 80-100: Unusually high volume (institutional activity)
+
+**Use Case**: Volume_Percentile > 80 at dip = Strong accumulation signal
+
+### Price Distance from SMAs
+
+- **Distance_SMA_50/100/200**: (Close - SMA) / SMA × 100
+  - Negative = Price below SMA (potential support)
+  - Large negative = Oversold vs trend
+
+**Use Case**: Distance_SMA_200 = -15% = Significantly below major trend (opportunity)
 
 ### Returns
 
@@ -200,10 +267,36 @@ All windows use **trading days** (NSE calendar):
 
 ## Data Caching
 
+### OHLCV Data
 - First fetch: Downloads 1 year of data from Kite Connect
 - Subsequent fetches: Merges new data with existing cache
 - Cache location: `data/{SYMBOL}_ohlcv.json`
 - Buffer: Fetches 100+ days before analysis window for indicator initialization
+
+### Pre-calculated Indicators (Cached)
+
+All indicators are calculated once during data fetch and cached with OHLCV data:
+
+| Indicator | Description | Usage |
+|-----------|-------------|-------|
+| **RSI_14** | 14-period Relative Strength Index | Momentum at accumulation points (0-100) |
+| **RSI_Percentile** | RSI percentile vs 252-day history | Relative strength context (0-100) |
+| **ATR_14** | 14-period Average True Range | Volatility measure (absolute) |
+| **ATR_Percentile** | ATR percentile vs 252-day history | Relative volatility (0-100) |
+| **BB_Lower/Upper** | Bollinger Bands (20-period, 2σ) | Price extremes |
+| **BB_Width** | Bollinger Band Width | Volatility proxy (%) |
+| **Volume_Percentile** | Volume percentile vs 252-day history | Relative volume context (0-100) |
+| **SMA_20/50/100/200** | Price moving averages | Trend identification |
+| **Volume_SMA_20/50** | Volume moving averages | RVOL baselines |
+| **Distance_SMA_50/100/200** | Price distance from SMAs | Trend deviation (%) |
+
+**Benefits:**
+- ✅ Calculated once, used multiple times
+- ✅ Consistent across all analyses
+- ✅ Faster subsequent loads (no recalculation)
+- ✅ Cached with OHLCV data for persistence
+
+**Note:** If you update the indicator calculation logic, delete the cache files in `data/` to force recalculation.
 
 ## Troubleshooting
 
