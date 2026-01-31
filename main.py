@@ -1,16 +1,42 @@
-# This is a sample Python script.
+"""
+Earnings Event Alpha Tool - Main Entry Point
 
-# Press ⌃R to execute it or replace it with your code.
-# Press Double ⇧ to search everywhere for classes, files, tool windows, actions, and settings.
+Run this file to start the Streamlit dashboard:
+    streamlit run main.py
+
+Or run directly:
+    python main.py
+"""
+
+import subprocess
+import sys
+from pathlib import Path
 
 
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press ⌘F8 to toggle the breakpoint.
+def main():
+    """Launch Streamlit app."""
+    app_path = Path(__file__).parent / "src" / "ui" / "app.py"
+    
+    if not app_path.exists():
+        print(f"Error: App file not found at {app_path}")
+        sys.exit(1)
+    
+    print("Starting Earnings Event Alpha Tool...")
+    print(f"Dashboard: http://localhost:8501")
+    print("\nPress Ctrl+C to stop the server\n")
+    
+    try:
+        subprocess.run([
+            "streamlit", "run", str(app_path),
+            "--server.headless", "true"
+        ])
+    except KeyboardInterrupt:
+        print("\nShutting down...")
+    except FileNotFoundError:
+        print("\nError: Streamlit not found. Please install dependencies:")
+        print("  pip install -r requirements.txt")
+        sys.exit(1)
 
 
-# Press the green button in the gutter to run the script.
-if __name__ == '__main__':
-    print_hi('PyCharm')
-
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+if __name__ == "__main__":
+    main()
