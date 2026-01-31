@@ -1,0 +1,18 @@
+# Earnings Event Alpha Tool - Dependencies
+
+# Kite Connect API
+kiteconnect>=4.2.0
+
+# Data manipulation
+pandas>=2.0.0
+numpy>=1.24.0
+
+# Technical indicators
+pandas-ta>=0.3.14b
+
+# Visualization
+streamlit>=1.28.0
+plotly>=5.17.0
+
+# Utilities
+python-dateutil>=2.8.2
