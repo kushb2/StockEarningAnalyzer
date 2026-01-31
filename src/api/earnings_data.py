@@ -21,24 +21,30 @@ class EarningsData:
     ACCUMULATION_START = -10 # T-10
     ACCUMULATION_END = -2    # T-2
     
-    def __init__(self, config_path: str = "configs/earnings_dates.json"):
+    def __init__(self, config_path: str = "configs/stockSymbolDetails.json"):
         """
-        Initialize EarningsData with earnings calendar.
+        Initialize EarningsData with stock symbol details.
         
         Args:
-            config_path: Path to earnings_dates.json
+            config_path: Path to stockSymbolDetails.json
         """
         self.config_path = Path(config_path)
+        self.stock_details: list[dict] = []
         self.earnings_dates: dict[str, list[str]] = {}
-        self._load_earnings_dates()
+        self._load_stock_details()
     
-    def _load_earnings_dates(self) -> None:
-        """Load earnings dates from JSON config."""
+    def _load_stock_details(self) -> None:
+        """Load stock details from consolidated JSON config."""
         if not self.config_path.exists():
-            raise FileNotFoundError(f"Earnings dates config not found: {self.config_path}")
+            raise FileNotFoundError(f"Stock details config not found: {self.config_path}")
         
         with open(self.config_path, 'r') as f:
-            self.earnings_dates = json.load(f)
+            self.stock_details = json.load(f)
+        
+        # Build earnings_dates dict for backward compatibility
+        for stock in self.stock_details:
+            symbol = stock['symbol']
+            self.earnings_dates[symbol] = stock.get('earnings_dates', [])
     
     def get_earnings_dates(self, symbol: str) -> list[datetime]:
         """

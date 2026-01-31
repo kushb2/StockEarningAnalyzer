@@ -10,18 +10,33 @@ project_root = os.path.dirname(script_dir)
 
 def find_instrument_tokens():
     """
-    Finds and stores instrument tokens for a list of trading symbols from a JSON file.
+    Finds and updates instrument tokens for stocks in stockSymbolDetails.json.
+    Only updates tokens that are null or missing.
     """
+    stock_details_path = os.path.join(project_root, 'configs', 'stockSymbolDetails.json')
+    
     try:
-        # Load trading symbols from JSON
-        with open(os.path.join(project_root, 'configs', 'trading_symbols.json'), 'r') as f:
-            trading_symbols_to_find = [item['symbol'] for item in json.load(f)]
+        # Load stock symbol details
+        with open(stock_details_path, 'r') as f:
+            stock_details = json.load(f)
     except FileNotFoundError:
-        print("Error: trading_symbols.json not found.")
+        print("Error: stockSymbolDetails.json not found.")
         return
     except (KeyError, TypeError):
-        print("Error: trading_symbols.json is not in the expected format.")
+        print("Error: stockSymbolDetails.json is not in the expected format.")
         return
+    
+    # Find symbols that need tokens (null or missing)
+    symbols_to_find = []
+    for stock in stock_details:
+        if stock.get('instrument_token') is None:
+            symbols_to_find.append(stock['symbol'])
+    
+    if not symbols_to_find:
+        print("All stocks already have instrument tokens. Nothing to update.")
+        return
+    
+    print(f"Found {len(symbols_to_find)} stocks without instrument tokens: {', '.join(symbols_to_find)}")
 
     try:
         # Load the access token from the file
@@ -58,25 +73,37 @@ def find_instrument_tokens():
         print(f"Fetched {len(instruments)} instruments.")
 
         # Use a set for efficient lookup of trading symbols
-        symbols_set = set(trading_symbols_to_find)
-        instrument_tokens = {}
+        symbols_set = set(symbols_to_find)
+        found_tokens = {}
 
         # Filter the instruments efficiently
         for instrument in instruments:
             if instrument['tradingsymbol'] in symbols_set:
-                instrument_tokens[instrument['tradingsymbol']] = instrument['instrument_token']
+                found_tokens[instrument['tradingsymbol']] = instrument['instrument_token']
                 # Remove the found symbol to speed up subsequent searches
                 symbols_set.remove(instrument['tradingsymbol'])
                 if not symbols_set:
                     break  # Stop searching once all symbols are found
 
-        # Save the results to a file
-        output_filename = os.path.join(project_root, 'configs', 'instrument_tokens.json')
-        with open(output_filename, 'w') as f:
-            json.dump(instrument_tokens, f, indent=4)
+        # Update stock_details with found tokens
+        updated_count = 0
+        for stock in stock_details:
+            symbol = stock['symbol']
+            if symbol in found_tokens:
+                stock['instrument_token'] = found_tokens[symbol]
+                updated_count += 1
+                print(f"✓ Updated {symbol}: {found_tokens[symbol]}")
+        
+        # Report symbols not found
+        if symbols_set:
+            print(f"\n⚠ Warning: Could not find tokens for: {', '.join(symbols_set)}")
 
-        print(f"Successfully found {len(instrument_tokens)} instrument tokens.")
-        print(f"Results saved to {output_filename}")
+        # Save the updated stock details
+        with open(stock_details_path, 'w') as f:
+            json.dump(stock_details, f, indent=2)
+
+        print(f"\n✓ Successfully updated {updated_count} instrument tokens.")
+        print(f"✓ Results saved to {stock_details_path}")
 
     except FileNotFoundError as e:
         print(f"An error occurred: {e}")

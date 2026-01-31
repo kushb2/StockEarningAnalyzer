@@ -73,7 +73,7 @@ Three-phase implementation: Engine (Python backend with dual-mode Swing/Position
     - Enable rapid toggling between stocks and quarters
     - _Requirements: 11.4_
 
-  - [-] 3.2 Test with POLYCAB across multiple quarters
+  - [x] 3.2 Test with POLYCAB across multiple quarters
     - Run end-to-end test with POLYCAB stock
     - Test switching between different quarters
     - Verify chart renders correctly with super-set window (T-20 to T+40)
@@ -84,7 +84,7 @@ Three-phase implementation: Engine (Python backend with dual-mode Swing/Position
   - [ ] 3.3 Create requirements.txt
     - Add dependencies: kiteconnect, pandas, pandas_ta, streamlit, plotly
 
-- [ ] 4. Final checkpoint
+- [x] 4. Final checkpoint
   - Ensure app runs without errors
   - Verify multi-quarter analysis works
   - Ask user if questions arise

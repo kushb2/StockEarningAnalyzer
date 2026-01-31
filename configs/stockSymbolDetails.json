@@ -1,0 +1,191 @@
+[
+  {
+    "stock_name": "Polycab India Ltd.",
+    "symbol": "POLYCAB",
+    "description": "Indian Stock Market Index",
+    "instrument_token": 2455041,
+    "earnings_dates": [
+      "2026-01-16"
+    ]
+  },
+  {
+    "stock_name": "SML Mahindra Ltd.",
+    "symbol": "SMLMAH",
+    "description": "Indian Banking Sector Index",
+    "instrument_token": 867073,
+    "earnings_dates": [
+      "2026-01-16"
+    ]
+  },
+  {
+    "stock_name": "Netweb Technologies India Ltd.",
+    "symbol": "NETWEB",
+    "description": "Conglomerate",
+    "instrument_token": 4462849,
+    "earnings_dates": [
+      "2026-01-17"
+    ]
+  },
+  {
+    "stock_name": "Motherson Sumi Wiring India Ltd.",
+    "symbol": "MSUMI",
+    "description": "IT Services",
+    "instrument_token": 2200577,
+    "earnings_dates": [
+      "2026-01-30"
+    ]
+  },
+  {
+    "stock_name": "Antony Waste Handling Cell Ltd.",
+    "symbol": "AWHCL",
+    "description": "IT Services",
+    "instrument_token": 460033,
+    "earnings_dates": [
+      "2026-01-30"
+    ]
+  },
+  {
+    "stock_name": "Bhagyanagar India Ltd.",
+    "symbol": "BHAGYANGR",
+    "description": "IT Services",
+    "instrument_token": null,
+    "earnings_dates": [
+      "2026-01-30"
+    ]
+  },
+  {
+    "stock_name": "MTAR Technologies Ltd.",
+    "symbol": "MTARTECH",
+    "description": "IT Services",
+    "instrument_token": 693505,
+    "earnings_dates": [
+      "2026-01-29"
+    ]
+  },
+  {
+    "stock_name": "Tata Motors Ltd.",
+    "symbol": "TMCV",
+    "description": "IT Services",
+    "instrument_token": 194504193,
+    "earnings_dates": [
+      "2026-01-29"
+    ]
+  },
+  {
+    "stock_name": "Ashoka Buildcon Ltd.",
+    "symbol": "ASHOKA",
+    "description": "IT Services",
+    "instrument_token": 5166593,
+    "earnings_dates": [
+      "2026-01-30"
+    ]
+  },
+  {
+    "stock_name": "Walchandnagar Industries Ltd.",
+    "symbol": "WALCHANNAG",
+    "description": "IT Services",
+    "instrument_token": 956417,
+    "earnings_dates": [
+      "2026-01-29"
+    ]
+  },
+  {
+    "stock_name": "Crizac Ltd.",
+    "symbol": "CRIZAC",
+    "description": "IT Services",
+    "instrument_token": 194009601,
+    "earnings_dates": [
+      "2026-01-28"
+    ]
+  },
+  {
+    "stock_name": "ASK Automotive Ltd.",
+    "symbol": "ASKAUTOLTD",
+    "description": "IT Services",
+    "instrument_token": 5158913,
+    "earnings_dates": [
+      "2026-01-28"
+    ]
+  },
+  {
+    "stock_name": "Larsen & Toubro Ltd.",
+    "symbol": "LT",
+    "description": "IT Services",
+    "instrument_token": 2939649,
+    "earnings_dates": [
+      "2026-01-28"
+    ]
+  },
+  {
+    "stock_name": "Heritage Foods Ltd.",
+    "symbol": "HERITGFOOD",
+    "description": "IT Services",
+    "instrument_token": 1177089,
+    "earnings_dates": [
+      "2026-01-28"
+    ]
+  },
+  {
+    "stock_name": "Dodla Dairy Ltd.",
+    "symbol": "DODLA",
+    "description": "IT Services",
+    "instrument_token": 1234433,
+    "earnings_dates": [
+      "2026-01-27"
+    ]
+  },
+  {
+    "stock_name": "Alldigi Tech Ltd.",
+    "symbol": "ALLDIGI",
+    "description": "IT Services",
+    "instrument_token": 3020289,
+    "earnings_dates": [
+      "2026-01-27"
+    ]
+  },
+  {
+    "stock_name": "Kirloskar Pneumatic Company Ltd.",
+    "symbol": "KIRLPNU",
+    "description": "IT Services",
+    "instrument_token": 3886081,
+    "earnings_dates": [
+      "2026-01-23"
+    ]
+  },
+  {
+    "stock_name": "Eternal Ltd.",
+    "symbol": "ETERNAL",
+    "description": "IT Services",
+    "instrument_token": 1304833,
+    "earnings_dates": [
+      "2026-01-21"
+    ]
+  },
+  {
+    "stock_name": "K P Energy Ltd.",
+    "symbol": "KPEL",
+    "description": "IT Services",
+    "instrument_token": 6932225,
+    "earnings_dates": [
+      "2026-01-21"
+    ]
+  },
+  {
+    "stock_name": "KEI Industries Ltd.",
+    "symbol": "KEI",
+    "description": "IT Services",
+    "instrument_token": 3407361,
+    "earnings_dates": [
+      "2026-01-21"
+    ]
+  },
+  {
+    "stock_name": "IndiaMART InterMESH Ltd.",
+    "symbol": "INDIAMART",
+    "description": "IT Services",
+    "instrument_token": 2745857,
+    "earnings_dates": [
+      "2026-01-20"
+    ]
+  }
+]

@@ -27,41 +27,40 @@ class DataFetcher:
     
     def __init__(
         self,
-        symbols_path: str = "configs/trading_symbols.json",
-        tokens_path: str = "configs/instrument_tokens.json",
+        config_path: str = "configs/stockSymbolDetails.json",
         cache_dir: str = "data"
     ):
         """
         Initialize DataFetcher.
         
         Args:
-            symbols_path: Path to trading_symbols.json
-            tokens_path: Path to instrument_tokens.json
+            config_path: Path to stockSymbolDetails.json
             cache_dir: Directory for cached OHLCV files
         """
-        self.symbols_path = Path(symbols_path)
-        self.tokens_path = Path(tokens_path)
+        self.config_path = Path(config_path)
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(exist_ok=True)
         
-        self.symbols: list[dict] = []
+        self.stock_details: list[dict] = []
         self.instrument_tokens: dict[str, int] = {}
         self.kite = None
         
         self._load_configs()
     
     def _load_configs(self) -> None:
-        """Load stock universe and instrument tokens."""
-        if not self.symbols_path.exists():
-            raise FileNotFoundError(f"Trading symbols config not found: {self.symbols_path}")
-        if not self.tokens_path.exists():
-            raise FileNotFoundError(f"Instrument tokens config not found: {self.tokens_path}")
+        """Load stock details from consolidated JSON."""
+        if not self.config_path.exists():
+            raise FileNotFoundError(f"Stock details config not found: {self.config_path}")
         
-        with open(self.symbols_path, 'r') as f:
-            self.symbols = json.load(f)
+        with open(self.config_path, 'r') as f:
+            self.stock_details = json.load(f)
         
-        with open(self.tokens_path, 'r') as f:
-            self.instrument_tokens = json.load(f)
+        # Build instrument_tokens dict
+        for stock in self.stock_details:
+            symbol = stock['symbol']
+            token = stock.get('instrument_token')
+            if token is not None:
+                self.instrument_tokens[symbol] = token
     
     def _init_kite(self) -> bool:
         """Initialize Kite Connect client if not already done."""
@@ -84,7 +83,7 @@ class DataFetcher:
     
     def get_all_symbols(self) -> list[str]:
         """Get list of all available stock symbols."""
-        return [s["symbol"] for s in self.symbols]
+        return [s["symbol"] for s in self.stock_details]
     
     def get_instrument_token(self, symbol: str) -> Optional[int]:
         """
