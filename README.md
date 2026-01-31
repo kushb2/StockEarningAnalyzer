@@ -108,14 +108,25 @@ This script:
 ### Launch Dashboard
 
 ```bash
-# Option 1: Using main.py
+# Option 1: Using main.py (with auto-reload enabled)
 python3 main.py
 
-# Option 2: Direct streamlit
-streamlit run src/ui/app.py
+# Option 2: Direct streamlit (with auto-reload)
+streamlit run src/ui/app.py --server.runOnSave true
 ```
 
 Dashboard opens at `http://localhost:8501`
+
+**Auto-Reload**: The server automatically reloads when you save changes to any Python file. You'll see "Source file changed" in the browser and it will re-run automatically.
+
+### Development Tips
+
+- **Auto-reload is enabled** via `.streamlit/config.toml`
+- Changes to `src/` files trigger automatic reload
+- No need to restart the server during development
+- Use `st.cache_resource` for expensive operations (already implemented)
+- Press `R` in browser to manually rerun
+- Press `C` to clear cache
 
 ### Dashboard Features
 

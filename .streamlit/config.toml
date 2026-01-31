@@ -1,0 +1,30 @@
+# Streamlit Configuration for Development
+
+[server]
+# Enable auto-reload on file changes
+runOnSave = true
+fileWatcherType = "auto"
+
+# Server settings
+headless = true
+port = 8502
+
+[browser]
+# Automatically open browser
+gatherUsageStats = false
+
+[runner]
+# Faster reruns
+fastReruns = true
+
+[client]
+# Show error details
+showErrorDetails = true
+
+[theme]
+# Optional: Custom theme (comment out if not needed)
+# primaryColor = "#FF4B4B"
+# backgroundColor = "#FFFFFF"
+# secondaryBackgroundColor = "#F0F2F6"
+# textColor = "#262730"
+# font = "sans serif"

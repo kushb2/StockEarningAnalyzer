@@ -28,7 +28,9 @@ def main():
     try:
         subprocess.run([
             "streamlit", "run", str(app_path),
-            "--server.headless", "true"
+            "--server.headless", "true",
+            "--server.runOnSave", "true",
+            "--server.fileWatcherType", "auto"
         ])
     except KeyboardInterrupt:
         print("\nShutting down...")

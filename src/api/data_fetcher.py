@@ -278,6 +278,7 @@ class DataFetcher:
         return self.fetch_ohlcv(symbol, buffer_start, analysis_end)
     
     def get_trading_days(self, symbol: str) -> list[datetime]:
+        print("get_trading_days : Symbol", symbol)
         """
         Get list of trading days from cached OHLCV data.
         

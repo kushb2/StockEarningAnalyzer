@@ -132,7 +132,9 @@ def perform_analysis(symbol, earnings_date, data_fetcher, earnings_data, analyze
     """Fetch data and perform analysis."""
     try:
         # Get trading days from cache (or fetch minimal data first)
+        print("earnings_date", earnings_date, "symbol", symbol)
         trading_days = data_fetcher.get_trading_days(symbol)
+        print(trading_days)
         
         if not trading_days:
             # No cache, fetch 1 year of data first
