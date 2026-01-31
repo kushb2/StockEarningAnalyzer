@@ -7,13 +7,13 @@ Three-phase implementation: Engine (Python backend with dual-mode Swing/Position
 ## Tasks
 
 - [ ] 1. Phase 1: The Engine (Python Backend)
-  - [ ] 1.1 Create earnings_dates.json config file
+  - [x] 1.1 Create earnings_dates.json config file
     - Add multi-quarter earnings dates for stocks
     - Format: `{"POLYCAB": ["2024-01-15", "2024-04-15", "2024-07-15", "2024-10-15"], ...}`
     - Include at least 2-4 quarters per stock for pattern validation
     - _Requirements: 2.1, 2.2, 2.3_
 
-  - [ ] 1.2 Create EarningsData class for date and window management
+  - [-] 1.2 Create EarningsData class for date and window management
     - Create `src/api/earnings_data.py`
     - Load multi-quarter earnings dates from JSON (array format: `["2025-Q1", "2024-Q4", ...]`)
     - Calculate trading day offsets (T-N, T+N) using available OHLCV dates
