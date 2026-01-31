@@ -185,6 +185,8 @@ class EarningsData:
         """
         Calculate all analysis windows for an earnings event.
         
+        Observation period: T-20 to current date (latest available trading day)
+        
         Args:
             earnings_date: The earnings announcement date (T)
             trading_days: List of valid trading days from OHLCV data
@@ -202,22 +204,28 @@ class EarningsData:
                 "t_plus_20": date
             }
         """
+        # Get current date (latest trading day available)
+        trading_days_sorted = sorted(trading_days)
+        current_date = trading_days_sorted[-1] if trading_days_sorted else datetime.now()
+        
         windows = {
             "earnings_date": earnings_date,
             "observation": {
                 "start": self.get_trading_day_offset(earnings_date, OBSERVATION_START_OFFSET, trading_days),
-                "end": self.get_trading_day_offset(earnings_date, OBSERVATION_END_OFFSET, trading_days)
+                "end": current_date  # Use current date instead of T+40
             },
             "accumulation": {
                 "start": self.get_trading_day_offset(earnings_date, ACCUMULATION_START_OFFSET, trading_days),
                 "end": self.get_trading_day_offset(earnings_date, ACCUMULATION_END_OFFSET, trading_days)
             },
             "t_minus_1": self.get_trading_day_offset(earnings_date, -1, trading_days),
+            "t_plus_0": self.get_trading_day_offset(earnings_date, 0, trading_days),
             "t_plus_1": self.get_trading_day_offset(earnings_date, 1, trading_days),
             "t_plus_2": self.get_trading_day_offset(earnings_date, 2, trading_days),
             "t_plus_3": self.get_trading_day_offset(earnings_date, 3, trading_days),
             "t_plus_4": self.get_trading_day_offset(earnings_date, 4, trading_days),
             "t_plus_5": self.get_trading_day_offset(earnings_date, 5, trading_days),
+            "t_plus_6": self.get_trading_day_offset(earnings_date, 6, trading_days),
             "t_plus_10": self.get_trading_day_offset(earnings_date, 10, trading_days),
             "t_plus_20": self.get_trading_day_offset(earnings_date, 20, trading_days)
         }

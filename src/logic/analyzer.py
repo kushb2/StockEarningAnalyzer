@@ -168,8 +168,9 @@ class Analyzer:
         """
         Find accumulation price and all accumulation days.
         
-        Accumulation Price = Lowest Low in T-10 to T-2 window
-        Accumulation Days = ALL days where Low equals Accumulation Price
+        Accumulation Price = Lowest Typical Price in T-10 to T-2 window
+        Typical Price = (Low + High + Close) / 3
+        Accumulation Days = ALL days where Typical Price equals Accumulation Price
         
         Returns:
             (accumulation_price, list of accumulation day dicts)
@@ -187,11 +188,14 @@ class Analyzer:
         if acc_window.empty:
             return None, []
         
-        # Find lowest Low
-        accumulation_price = acc_window['low'].min()
+        # Calculate typical price: (Low + High + Close) / 3
+        acc_window['typical_price'] = (acc_window['low'] + acc_window['high'] + acc_window['close']) / 3
         
-        # Find ALL days with this low
-        acc_days_mask = acc_window['low'] == accumulation_price
+        # Find lowest Typical Price
+        accumulation_price = acc_window['typical_price'].min()
+        
+        # Find ALL days with this typical price
+        acc_days_mask = acc_window['typical_price'] == accumulation_price
         acc_days_df = acc_window[acc_days_mask]
         
         # Build accumulation days list
@@ -206,6 +210,9 @@ class Analyzer:
             accumulation_days.append({
                 "date": row['date'],
                 "low": row['low'],
+                "high": row['high'],
+                "close": row['close'],
+                "typical_price": row['typical_price'],
                 "rvol_20": row.get('rvol_20'),
                 "rvol_50": row.get('rvol_50'),
                 "rsi": row.get('rsi'),
@@ -267,7 +274,7 @@ class Analyzer:
         """
         Calculate fixed-interval returns with multiple exit price methods.
         
-        For each interval (T+1 to T+5), calculates returns using:
+        For each interval (T+0 to T+6), calculates returns using:
         - Close price (standard)
         - Low price (worst case scenario)
         - High price (best case scenario)
@@ -276,11 +283,13 @@ class Analyzer:
         Returns:
             - run_up: Accumulation Price -> T-1 Close
             - event: T-1 Close -> T+2 Close
+            - profit_t0_close/low/high/typical: T+0 returns (earnings day)
             - profit_t1_close/low/high/typical: T+1 returns
             - profit_t2_close/low/high/typical: T+2 returns
             - profit_t3_close/low/high/typical: T+3 returns
             - profit_t4_close/low/high/typical: T+4 returns
             - profit_t5_close/low/high/typical: T+5 returns
+            - profit_t6_close/low/high/typical: T+6 returns
         """
         returns = {
             "run_up": None,
@@ -298,8 +307,8 @@ class Analyzer:
         if t_minus_1_price and t_plus_2_price:
             returns['event'] = ((t_plus_2_price - t_minus_1_price) / t_minus_1_price) * 100
         
-        # Calculate T+1 to T+5 returns with multiple price methods
-        for day in range(0, 6):  # T+1 to T+5
+        # Calculate T+0 to T+6 returns with multiple price methods
+        for day in range(0, 7):  # T+0 to T+6
             offset_date = windows.get(f't_plus_{day}')
             
             if offset_date and accumulation_price:
@@ -399,8 +408,8 @@ class Analyzer:
             "event": None,
         }
         
-        # Add T+1 to T+5 returns with all price methods
-        for day in range(0, 6):
+        # Add T+0 to T+6 returns with all price methods
+        for day in range(0, 7):
             returns[f'profit_t{day}_close'] = None
             returns[f'profit_t{day}_low'] = None
             returns[f'profit_t{day}_high'] = None
