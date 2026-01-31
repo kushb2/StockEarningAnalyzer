@@ -213,7 +213,10 @@ class EarningsData:
                 "end": self.get_trading_day_offset(earnings_date, ACCUMULATION_END_OFFSET, trading_days)
             },
             "t_minus_1": self.get_trading_day_offset(earnings_date, -1, trading_days),
+            "t_plus_1": self.get_trading_day_offset(earnings_date, 1, trading_days),
             "t_plus_2": self.get_trading_day_offset(earnings_date, 2, trading_days),
+            "t_plus_3": self.get_trading_day_offset(earnings_date, 3, trading_days),
+            "t_plus_4": self.get_trading_day_offset(earnings_date, 4, trading_days),
             "t_plus_5": self.get_trading_day_offset(earnings_date, 5, trading_days),
             "t_plus_10": self.get_trading_day_offset(earnings_date, 10, trading_days),
             "t_plus_20": self.get_trading_day_offset(earnings_date, 20, trading_days)

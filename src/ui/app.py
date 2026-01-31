@@ -413,23 +413,28 @@ def display_metrics_panel(symbol, quarter, earnings_date, result):
             st.metric("Event Trade", "N/A")
     
     # Fixed-Interval Exits
-    st.markdown("**Fixed-Interval Exits:**")
+    st.markdown("**Fixed-Interval Exits (T+1 to T+5):**")
+    st.caption("Returns from accumulation price using different exit price methods")
     
     exit_data = []
-    for interval, label in [
-        ('profit_t2', 'T+2'),
-        ('profit_t5', 'T+5'),
-        ('profit_t10', 'T+10'),
-        ('profit_t20', 'T+20')
-    ]:
-        value = returns[interval]
+    for day in range(0, 6):  # T+1 to T+5
+        close_return = returns.get(f'profit_t{day}_close')
+        low_return = returns.get(f'profit_t{day}_low')
+        high_return = returns.get(f'profit_t{day}_high')
+        typical_return = returns.get(f'profit_t{day}_typical')
+        
         exit_data.append({
-            "Exit": label,
-            "Return": f"{value:.2f}%" if value is not None else "N/A"
+            "Day": f"T+{day}",
+            "Close": f"{close_return:.2f}%" if close_return is not None else "N/A",
+            "Low": f"{low_return:.2f}%" if low_return is not None else "N/A",
+            "High": f"{high_return:.2f}%" if high_return is not None else "N/A",
+            "Typical": f"{typical_return:.2f}%" if typical_return is not None else "N/A"
         })
     
     exit_df = pd.DataFrame(exit_data)
     st.dataframe(exit_df, use_container_width=True, hide_index=True)
+    
+    st.caption("**Close**: Standard close price | **Low**: Worst case | **High**: Best case | **Typical**: (L+H+C)/3")
     
     # Interpretation hints
     st.markdown("---")

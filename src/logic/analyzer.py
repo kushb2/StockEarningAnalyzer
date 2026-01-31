@@ -265,50 +265,81 @@ class Analyzer:
         accumulation_price: float
     ) -> dict:
         """
-        Calculate fixed-interval returns.
+        Calculate fixed-interval returns with multiple exit price methods.
+        
+        For each interval (T+1 to T+5), calculates returns using:
+        - Close price (standard)
+        - Low price (worst case scenario)
+        - High price (best case scenario)
+        - Typical price: (Low + High + Close) / 3 (average)
         
         Returns:
             - run_up: Accumulation Price -> T-1 Close
             - event: T-1 Close -> T+2 Close
-            - profit_t2: Accumulation Price -> T+2 Close
-            - profit_t5: Accumulation Price -> T+5 Close
-            - profit_t10: Accumulation Price -> T+10 Close
-            - profit_t20: Accumulation Price -> T+20 Close
+            - profit_t1_close/low/high/typical: T+1 returns
+            - profit_t2_close/low/high/typical: T+2 returns
+            - profit_t3_close/low/high/typical: T+3 returns
+            - profit_t4_close/low/high/typical: T+4 returns
+            - profit_t5_close/low/high/typical: T+5 returns
         """
         returns = {
             "run_up": None,
             "event": None,
-            "profit_t2": None,
-            "profit_t5": None,
-            "profit_t10": None,
-            "profit_t20": None
         }
         
         # Get prices at key dates
         t_minus_1_price = self._get_close_price(df, windows['t_minus_1'])
-        t_plus_2_price = self._get_close_price(df, windows['t_plus_2'])
-        t_plus_5_price = self._get_close_price(df, windows['t_plus_5'])
-        t_plus_10_price = self._get_close_price(df, windows['t_plus_10'])
-        t_plus_20_price = self._get_close_price(df, windows['t_plus_20'])
         
-        # Calculate returns
+        # Calculate run-up and event returns
         if accumulation_price and t_minus_1_price:
             returns['run_up'] = ((t_minus_1_price - accumulation_price) / accumulation_price) * 100
         
+        t_plus_2_price = self._get_close_price(df, windows['t_plus_2'])
         if t_minus_1_price and t_plus_2_price:
             returns['event'] = ((t_plus_2_price - t_minus_1_price) / t_minus_1_price) * 100
         
-        if accumulation_price and t_plus_2_price:
-            returns['profit_t2'] = ((t_plus_2_price - accumulation_price) / accumulation_price) * 100
-        
-        if accumulation_price and t_plus_5_price:
-            returns['profit_t5'] = ((t_plus_5_price - accumulation_price) / accumulation_price) * 100
-        
-        if accumulation_price and t_plus_10_price:
-            returns['profit_t10'] = ((t_plus_10_price - accumulation_price) / accumulation_price) * 100
-        
-        if accumulation_price and t_plus_20_price:
-            returns['profit_t20'] = ((t_plus_20_price - accumulation_price) / accumulation_price) * 100
+        # Calculate T+1 to T+5 returns with multiple price methods
+        for day in range(0, 6):  # T+1 to T+5
+            offset_date = windows.get(f't_plus_{day}')
+            
+            if offset_date and accumulation_price:
+                # Get all price types for this day
+                close_price = self._get_close_price(df, offset_date)
+                low_price = self._get_low_price(df, offset_date)
+                high_price = self._get_high_price(df, offset_date)
+                
+                # Calculate typical price: (Low + High + Close) / 3
+                if low_price and high_price and close_price:
+                    typical_price = (low_price + high_price + close_price) / 3
+                else:
+                    typical_price = None
+                
+                # Calculate returns for each price method
+                if close_price:
+                    returns[f'profit_t{day}_close'] = ((close_price - accumulation_price) / accumulation_price) * 100
+                else:
+                    returns[f'profit_t{day}_close'] = None
+                
+                if low_price:
+                    returns[f'profit_t{day}_low'] = ((low_price - accumulation_price) / accumulation_price) * 100
+                else:
+                    returns[f'profit_t{day}_low'] = None
+                
+                if high_price:
+                    returns[f'profit_t{day}_high'] = ((high_price - accumulation_price) / accumulation_price) * 100
+                else:
+                    returns[f'profit_t{day}_high'] = None
+                
+                if typical_price:
+                    returns[f'profit_t{day}_typical'] = ((typical_price - accumulation_price) / accumulation_price) * 100
+                else:
+                    returns[f'profit_t{day}_typical'] = None
+            else:
+                # No data for this day
+                returns[f'profit_t{day}_close'] = None
+                returns[f'profit_t{day}_low'] = None
+                returns[f'profit_t{day}_high'] = None
+                returns[f'profit_t{day}_typical'] = None
         
         return returns
     
@@ -325,6 +356,32 @@ class Analyzer:
         
         return matches.iloc[0]['close']
     
+    def _get_low_price(self, df: pd.DataFrame, target_date: Optional[datetime]) -> Optional[float]:
+        """Get low price for a specific date."""
+        if target_date is None:
+            return None
+        
+        mask = df['date'].dt.date == target_date.date()
+        matches = df[mask]
+        
+        if matches.empty:
+            return None
+        
+        return matches.iloc[0]['low']
+    
+    def _get_high_price(self, df: pd.DataFrame, target_date: Optional[datetime]) -> Optional[float]:
+        """Get high price for a specific date."""
+        if target_date is None:
+            return None
+        
+        mask = df['date'].dt.date == target_date.date()
+        matches = df[mask]
+        
+        if matches.empty:
+            return None
+        
+        return matches.iloc[0]['high']
+    
     def _calculate_trading_days_between(
         self,
         start_date: datetime,
@@ -337,17 +394,22 @@ class Analyzer:
     
     def _empty_result(self) -> dict:
         """Return empty result structure when analysis fails."""
+        returns = {
+            "run_up": None,
+            "event": None,
+        }
+        
+        # Add T+1 to T+5 returns with all price methods
+        for day in range(0, 6):
+            returns[f'profit_t{day}_close'] = None
+            returns[f'profit_t{day}_low'] = None
+            returns[f'profit_t{day}_high'] = None
+            returns[f'profit_t{day}_typical'] = None
+        
         return {
             "accumulation_price": None,
             "accumulation_days": [],
             "reference_high": {"price": None, "date": None},
             "max_drawdown_pct": None,
-            "returns": {
-                "run_up": None,
-                "event": None,
-                "profit_t2": None,
-                "profit_t5": None,
-                "profit_t10": None,
-                "profit_t20": None
-            }
+            "returns": returns
         }

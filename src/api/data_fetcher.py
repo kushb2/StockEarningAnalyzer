@@ -260,10 +260,31 @@ class DataFetcher:
         
         # ===== Bollinger Bands =====
         bb = ta.bbands(df['close'], length=BB_PERIOD, std=BB_STD_DEV)
-        df['BB_Lower'] = bb[f'BBL_{BB_PERIOD}_{BB_STD_DEV}']
-        df['BB_Upper'] = bb[f'BBU_{BB_PERIOD}_{BB_STD_DEV}']
-        bb_middle = bb[f'BBM_{BB_PERIOD}_{BB_STD_DEV}']
-        df['BB_Width'] = ((df['BB_Upper'] - df['BB_Lower']) / bb_middle * 100)
+        
+        if bb is not None and not bb.empty:
+            # pandas-ta returns columns with format: BBL_20_2.0, BBM_20_2.0, BBU_20_2.0, BBB_20_2.0, BBP_20_2.0
+            # Get the actual column names
+            bb_cols = bb.columns.tolist()
+            
+            # Find the lower, middle, and upper band columns
+            lower_col = [col for col in bb_cols if col.startswith('BBL_')][0] if any(col.startswith('BBL_') for col in bb_cols) else None
+            middle_col = [col for col in bb_cols if col.startswith('BBM_')][0] if any(col.startswith('BBM_') for col in bb_cols) else None
+            upper_col = [col for col in bb_cols if col.startswith('BBU_')][0] if any(col.startswith('BBU_') for col in bb_cols) else None
+            
+            if lower_col and middle_col and upper_col:
+                df['BB_Lower'] = bb[lower_col]
+                df['BB_Upper'] = bb[upper_col]
+                df['BB_Width'] = ((bb[upper_col] - bb[lower_col]) / bb[middle_col] * 100)
+            else:
+                # Fallback: set to None if columns not found
+                df['BB_Lower'] = None
+                df['BB_Upper'] = None
+                df['BB_Width'] = None
+        else:
+            # Fallback: set to None if bbands calculation failed
+            df['BB_Lower'] = None
+            df['BB_Upper'] = None
+            df['BB_Width'] = None
         
         # ===== Volume Indicators =====
         df['Volume_Percentile'] = self._calculate_percentile(df['volume'], VOLUME_PERCENTILE_WINDOW)
